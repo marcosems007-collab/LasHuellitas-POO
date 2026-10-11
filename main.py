@@ -79,10 +79,13 @@ def main():
             fecha_str = input("Nueva fecha última vacuna (YYYY-MM-DD): ")
             try:
                 fecha = datetime.strptime(fecha_str, "%Y-%m-%d")
-                # Necesitamos un objeto para actualizar. Aquí forzamos perro para el dao, el DAO solo usa microchip y fecha
-                m_temp = Perro(mc, fecha) 
-                MascotaDAO.actualizar(m_temp)
-                print("Mascota actualizada.")
+                m_real = MascotaDAO.obtener_por_microchip(mc)
+                if m_real:
+                    m_real.fechaUltimaVacuna = fecha
+                    MascotaDAO.actualizar(m_real)
+                    print("Mascota actualizada exitosamente manteniendo su especie.")
+                else:
+                    print("Error: No se encontró una mascota con ese microchip.")
             except ValueError as e:
                 print(f"Error: {e}")
                 
@@ -100,10 +103,12 @@ def main():
             tel = input("Teléfono: ")
             try:
                 deuda = int(input("Días de deuda (0 si no tiene): "))
-                c = Cliente(rut, nombre, correo, tel, 999, deuda) # ID simulado, base de datos lo auto incrementa o usa el dado
-                ClienteDAO.insertar(c)
-                print("Cliente guardado.")
-            except ValueError as e:
+                c = Cliente(rut, nombre, correo, tel, None, deuda)
+                if ClienteDAO.insertar(c):
+                    print(f"Cliente guardado con ID {c.idCliente}.")
+                else:
+                    print("No se pudo guardar el cliente. Verifique que el RUT no esté registrado.")
+            except (ValueError, TypeError) as e:
                 print(f"Error de validación: {e}")
                 
         elif opc == '6':
@@ -111,17 +116,20 @@ def main():
             rut = input("RUT del Cliente: ")
             mc = pedir_microchip()
             
-            # Simulamos buscar al cliente y la mascota en la BD para instanciar (Para el proyecto, usaremos datos fijos o los recien ingresados)
-            # En la vida real aquí haríamos un ClienteDAO.obtener_por_rut(rut)
-            deuda = int(input("¿Cuántos días de deuda tiene el cliente en sistema? (Simulación de búsqueda): "))
-            c = Cliente(rut, "Cliente Generico", "correo@mail.cl", "99999999", 1, deuda)
-            
-            fecha_vac_str = input("¿Fecha de última vacuna de la mascota? (YYYY-MM-DD) (Simulación de búsqueda): ")
-            try:
-                fecha_vac = datetime.strptime(fecha_vac_str, "%Y-%m-%d")
-                m = Perro(mc, fecha_vac) # Perro por defecto para probar atencion
+            # Buscar al cliente y mascota REALES en la BD
+            c = ClienteDAO.obtener_por_rut(rut)
+            if not c:
+                print("Error: Cliente no encontrado en la base de datos.")
+                continue
                 
-                atencion = Atencion(1, datetime.now(), dolar_actual, veterinario, m, c)
+            m = MascotaDAO.obtener_por_microchip(mc)
+            if not m:
+                print("Error: Mascota no encontrada en la base de datos.")
+                continue
+            
+            try:
+                # Usamos id 0, la base de datos asignará el verdadero ID
+                atencion = Atencion(0, datetime.now(), dolar_actual, veterinario, m, c)
                 atencion.diagnostico = input("Ingrese diagnóstico: ")
                 
                 print("Agregar procedimientos:")

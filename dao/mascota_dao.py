@@ -1,4 +1,4 @@
-﻿import sqlite3
+import sqlite3
 from dao.database import conectar
 
 class MascotaDAO:
@@ -15,6 +15,40 @@ class MascotaDAO:
             conexion.commit()
         except sqlite3.Error as e:
             print(f"Error SQLite al insertar mascota: {e}")
+        finally:
+            if "conexion" in locals() and conexion:
+                conexion.close()
+
+    @staticmethod
+    def obtener_por_microchip(numero_microchip):
+        try:
+            conexion = conectar()
+            cursor = conexion.cursor()
+            cursor.execute("SELECT numero_microchip, tipo, fecha_ultima_vacuna FROM mascota WHERE numero_microchip = ?", (numero_microchip,))
+            row = cursor.fetchone()
+            if not row:
+                return None
+                
+            mc, tipo, fecha_str = row
+            from datetime import datetime
+            fecha = datetime.strptime(fecha_str, "%Y-%m-%dT%H:%M:%S") if 'T' in fecha_str else datetime.strptime(fecha_str, "%Y-%m-%d")
+            
+            if tipo == 'Perro':
+                from model.perro import Perro
+                return Perro(mc, fecha)
+            elif tipo == 'Gato':
+                from model.gato import Gato
+                return Gato(mc, fecha)
+            elif tipo == 'AnimalExotico':
+                from model.animal_exotico import AnimalExotico
+                return AnimalExotico(mc, fecha)
+            return None
+        except sqlite3.Error as e:
+            print(f"Error SQLite al buscar mascota: {e}")
+            return None
+        except Exception as e:
+            print(f"Error parseando mascota: {e}")
+            return None
         finally:
             if "conexion" in locals() and conexion:
                 conexion.close()
